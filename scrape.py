@@ -1,34 +1,12 @@
 from bs4 import BeautifulSoup
 from glob import glob
 # from fnmatch import fnmatch
-from os.path import expanduser, join, exists, splitext, relpath, abspath
+from os.path import expanduser, join, exists, splitext, abspath
 from os import makedirs
 from collections import defaultdict
 # from pprint import pprint
 import re
-import json
-
-
-RE_SEP = re.compile(r'[\\/s\.]+')
-
-
-def read_file(path):
-    try:
-        with open(path, 'r') as f:
-            return f.read()
-    except UnicodeDecodeError:
-        print('read_file failed: path=%s' % path)
-        return ''
-
-
-def save_json(path, obj):
-    with open(path, 'w') as f:
-        json.dump(obj, f, indent=4, sort_keys=True)
-
-
-def path_to_name(root, path):
-    rel = relpath(path, root)
-    return RE_SEP.sub('#', rel)
+from utils import summaries_dir, read_file, save_json, path_to_name
 
 
 # <?php /* End PaperCut Lifestyle */ ?>
@@ -46,11 +24,11 @@ def html_to_text(path):
     return soup.get_text()
 
 
-def save_summary(in_root, out_dir, php_path):
+def save_summary(in_root, summaries_dir, php_path):
     """Extract text from `php_path`, break it into pages and write the summary to 'summary_path
     """
     summary_name = path_to_name(in_root, php_path)
-    summary_path = abspath(join(out_dir, '%s.json' % summary_name))
+    summary_path = abspath(join(summaries_dir, '%s.json' % summary_name))
     # print('save_summary: %s->%s' % (php_path, summary_path))
     text = html_to_text(php_path)
 
@@ -108,12 +86,11 @@ def describe(path):
 
 root = expanduser('~/code/website')
 assert exists(root), root
-out_dir = 'data'
-makedirs(out_dir, exist_ok=True)
+makedirs(summaries_dir, exist_ok=True)
 
 if False:
     # describe('x.php')
-    save_summary(root, out_dir, 'x.php')
+    save_summary(root, summaries_dir, 'x.php')
     assert False
 
 
@@ -137,6 +114,6 @@ php_files = types['.php']
 for php_path in php_files:
     # print('-' * 80)
     # print(php_path)
-    save_summary(root, out_dir, php_path)
+    save_summary(root, summaries_dir, php_path)
     # describe(path)
     # assert False

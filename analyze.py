@@ -9,7 +9,7 @@ from utils import summaries_dir, load_json, save_json
 
 def summary_key(a):
     path, o = a
-    return -o['n_chars'], -o['n_paras'], path
+    return -o['page_chars'], -o['page_paras'], path
 
 
 nlp = spacy.load('en')
@@ -22,20 +22,26 @@ path_summaries = [(path, load_json(path)) for path in files]
 path_summaries.sort(key=summary_key)
 n = 0
 for i, (path, o) in enumerate(path_summaries[:25]):
-    print('%3d: %6d %4d %s' % (i, o['n_chars'], o['n_paras'], o['path']))
+    print('%3d: %6d %4d %s' % (i, o['page_chars'], o['page_paras'], o['path']))
     o['sents'] = []
     o['para_sents'] = []
     o['sent_words'] = []
-    o['sent_lens'] = []
+    o['sent_chars'] = []
     for para in o['paras']:
         # print('-' * 80)
         doc = nlp(para)
         sents = [str(s) for s in doc.sents]
-        sent_words = [len(s) for s in doc.sents]
+        sent_chars = [len(s) for s in doc.sents]
         o['sents'].append(sents)
-        o['sent_lens'].append(len(s) for s in sents)
+        o['sent_words'].append([len(s) for s in sents])
         o['para_sents'].append(len(sents))
-        o['sent_words'].append(sent_words)
+        o['sent_chars'].append(sent_chars)
+    print(sorted(o))
+    for k in sorted(o):
+        v = o[k]
+        t = type(v)
+        t0 = type(v[0]) if isinstance(v, list) else None
+        print('%10s: %s %s' % (k, t, t0))
     save_json(path, o)
     assert False, abspath(path)
         # para2 = ' '.join(sents)

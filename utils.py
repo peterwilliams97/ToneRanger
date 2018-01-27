@@ -1,14 +1,9 @@
 import json
 from os.path import relpath
+from os import renames, remove
 import re
 
-summaries_dir = 'data'
-
-
-def load_json(path):
-    with open(path, 'r') as f:
-        obj = json.load(f)
-    return obj
+summaries_dir = 'page.summaries'
 
 
 def read_file(path):
@@ -20,9 +15,24 @@ def read_file(path):
         return ''
 
 
+def load_json(path):
+    try:
+        with open(path, 'r') as f:
+            obj = json.load(f)
+    except json.decoder.JSONDecodeError:
+        print('load_json failed: path=%r' % path)
+        raise
+    return obj
+
+
+temp_name = 'temp.json'
+
+
 def save_json(path, obj):
-    with open(path, 'w') as f:
+    with open(temp_name, 'w') as f:
         json.dump(obj, f, indent=4, sort_keys=True)
+    # remove(path)
+    renames(temp_name, path)
 
 
 RE_SEP = re.compile(r'[\\/s\.]+')

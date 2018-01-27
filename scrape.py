@@ -32,20 +32,20 @@ def save_summary(in_root, summaries_dir, php_path):
     # print('save_summary: %s->%s' % (php_path, summary_path))
     text = html_to_text(php_path)
 
-    lines = lines = (line.strip() for line in text.splitlines())
-    lines = [ln for ln in lines if ln]
-    text = '\n'.join(lines)
+    paras = (line.strip() for line in text.splitlines())
+    paras = [p for p in paras if p]
+    text = '\n'.join(paras)
 
     if not text:
         return
 
     summary = {
         'path': php_path,
-        'n_chars': len(text),
+        'page_chars': len(text),
+        'page_paras': len(paras),
+        'para_chars': [len(p) for p in paras],
+        'paras': paras,
         'text': text,
-        'n_paras': len(lines),
-        'para_lens': [len(ln) for ln in lines],
-        'paras': lines,
     }
 
     save_json(summary_path, summary)
@@ -55,32 +55,17 @@ def br():
     print('-' * 60)
 
 
-
 def describe(path):
     text = html_to_text(path)
-    # break into lines and remove leading and trailing space on each
-    lines = (line.strip() for line in text.splitlines())
+    # break into paras and remove leading and trailing space on each
+    paras = (line.strip() for line in text.splitlines())
     # break multi-headlines into a line eac
-    chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
-    # drop blank lines
+    chunks = (phrase.strip() for line in paras for phrase in line.split("  "))
+    # drop blank paras
     text = '\n'.join(chunk for chunk in chunks if chunk)
 
     br()
     print(text)
-    if False:
-        br()
-        print(soup.p.contents)
-        br()
-        print(soup.prettify()[0:300])
-        br()
-        print(soup.div.contents)
-        br()
-        divs = soup.find_all('div')
-        print(divs)
-        br()
-        print(sorted(divs[0].__dict__))
-        for i, d in enumerate(divs):
-            print('%3d: %s' % (i, d.contents))
     print('=' * 60)
 
 

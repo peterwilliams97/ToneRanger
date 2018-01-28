@@ -10,17 +10,16 @@
     Word counts
 """
 from glob import glob
-from os.path import join, basename
+from os.path import join
 import spacy
-from utils import summaries_dir, load_json, save_json
-import time
+from utils import summaries_dir, load_json
 from collections import defaultdict
 
 threshold_words = 10
 
 
 def summary_key(o):
-    return o['page_paras'], o['page_chars'], o['path']
+    return o['count:page_paras'], o['count:page_chars'], o['path']
 
 
 nlp = spacy.load('en')
@@ -28,7 +27,7 @@ nlp = spacy.load('en')
 files = glob(join(summaries_dir, '*.json'))
 print('%4d files' % len(files))
 summaries = [load_json(path) for path in files]
-uniques = {hash(o['text']): o for o in summaries}
+uniques = {hash(o['text:page']): o for o in summaries}
 print('%4d uniques' % len(uniques))
 summaries = sorted(uniques.values(), key=summary_key)
 
@@ -42,7 +41,7 @@ cnt_sent_char = []
 cnt_word_char = []
 n_processed = 0
 for summary in summaries:
-    n_page_words = sum(sum(v) for v in summary['sent_chars'])
+    n_page_words = sum(sum(v) for v in summary['count:sent_chars'])
     if n_page_words < threshold_words:
         continue
     n_processed += 1
@@ -50,9 +49,9 @@ for summary in summaries:
     #     break
 
     print('%3d: %s' % (n_processed, summary['path']))
-    cnt_page_para.append(len(summary['paras']))
+    cnt_page_para.append(len(summary['text:paras']))
 
-    for para in summary['paras']:
+    for para in summary['text:paras']:
         doc = nlp(para)
         sp = 0
         wp = 0

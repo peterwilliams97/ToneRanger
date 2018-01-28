@@ -1,9 +1,9 @@
 import json
 from os.path import relpath
-from os import renames, remove
+from os import renames
 import re
 
-summaries_dir = 'page.summaries'
+summaries_dir = 'page.summaries.scrapy'
 
 
 def read_file(path):
@@ -35,7 +35,7 @@ def save_json(path, obj):
     renames(temp_name, path)
 
 
-RE_SEP = re.compile(r'[\\/s\.]+')
+RE_SEP = re.compile(r'[\\/\s\.:]+')
 
 
 def path_to_name(root, path):

@@ -20,3 +20,5 @@ A program to detect the tone of documents.
 * `page_chars`: Number of characters per page. List of integers.
 * `sent_chars`: Number of chars per word per sentence. List of list of integers.
 
+# Spider
+(https://www.analyticsvidhya.com/blog/2017/07/web-scraping-in-python-using-scrapy/)

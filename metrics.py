@@ -21,6 +21,31 @@ import matplotlib.pyplot as plt
 threshold_words = 10
 
 
+def describe(x):
+    return '\n'.join([
+        'num: %d' % len(x),
+        'min-max: %d - %d' % (x.min(), x.max()),
+        'mean: %.3f' % x.mean(),
+        'median: %.3f' % np.median(x),
+        '25_50_75: %s' % ['%.1f' % a for a in [np.percentile(x, q) for q in (25, 50, 75, 90)]],
+    ])
+
+
+def plot(arr, title):
+    x = np.array(arr)
+    x_min = x.min()
+    x_max = np.percentile(x, 90)
+    bins = np.arange(x_min, x_max)
+    plt.xlim((x_min, x_max))
+    plt.hist(x, bins=bins)
+    plt.title(title)
+    plt.figtext(0.4, 0.6, describe(x))
+    print('-' * 80)
+    print(title)
+    print(describe(x))
+    plt.show()
+
+
 def summary_key(o):
     return -o['count:page_paras'], -o['count:page_chars'], o['path']
 
@@ -134,41 +159,17 @@ def show_metrics(all_metrics, max_vocab=50):
         print('%5d: %7d %4.1f%% %r' % (i, n, n / n_words * 100.0, word))
 
     # plt.xscale('log')
-    if False:
-        bins = np.arange(0, 500)
-        plt.hist(cnt_page_para, bins=bins)
-        plt.title('Paragraphs per Page')
-        plt.xlim((1, 70))
-        plt.show()
+    plot(cnt_page_para, 'Paragraphs per Page')
+    plot(cnt_para_sent, 'Sentences per Paragraph')
+    plot(cnt_sent_word, 'Words per Sentence')
+    plot(cnt_word_char, 'Characters per Word')
 
     if False:
-        bins = np.arange(0, 80)
-        plt.hist(cnt_sent_word, bins=bins)
-        plt.title('Words per Sentence')
-        plt.xlim((1, 50))
+        plt.xscale('log')
+        plt.yscale('log')
+        plt.plot(sorted(vocab.values())[::-1])
+        plt.title('Word Frequencies (log : log)')
         plt.show()
-
-    if False:
-        bins = np.arange(1, 10)
-        plt.hist(cnt_para_sent, bins=bins)
-        plt.title('Sentences per Paragraph')
-        plt.xlim((1, 10))
-        plt.show()
-
-    if False:
-        bins = np.arange(1, 20)
-        plt.hist(cnt_word_char, bins=bins)
-        plt.title('Characters per Word')
-        plt.xlim((1, 20))
-        plt.show()
-
-    plt.xscale('log')
-    plt.yscale('log')
-    bins = np.arange(1, 10)
-    plt.plot(sorted(vocab.values())[::-1])
-    plt.title('Word Frequencies (log : log)')
-    # plt.xlim((1, 10))
-    plt.show()
 
 
 if False:

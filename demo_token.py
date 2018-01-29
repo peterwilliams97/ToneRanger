@@ -8,9 +8,9 @@ from collections import defaultdict
 nlp = spacy.load('en')
 
 para = '''
-Fixed an issue that caused an incorrect page count on some large format printers.
-Fixed an issue that caused an incorrect page count on some printers when duplex printing a document with an odd number of pages.
-Windows Print Provider: Added an option to change print queue error monitoring to SNMP (ErrorPollMethod=snmp in print-provider.conf). This speeds up the time on Fast Release Stations, Standard Release Stations and all web-based Release Station interfaces to: block the release of print jobs when a print queue is in error, and stop blocking the release  when the print queue is no longer in an error state.
+"The final release for the year is here and it\u2019s a cracker!",
+We\u2019ve included loads of enhancements across a wide range of devices, including Integrated Scanning on Ricoh SOP SmartSDK devices.
+Read more...
 '''
 para = para.strip(' \t\n')
 doc = nlp(para)

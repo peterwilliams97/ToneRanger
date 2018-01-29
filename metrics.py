@@ -12,17 +12,20 @@
 from glob import glob
 from os.path import join
 import spacy
+from spacy.symbols import SPACE, PUNCT, NUM, SYM
 from utils import summaries_dir, load_json, save_json
 from collections import defaultdict
+import numpy as np
+import matplotlib.pyplot as plt
 
 threshold_words = 10
 
 
 def summary_key(o):
-    return o['count:page_paras'], o['count:page_chars'], o['path']
+    return -o['count:page_paras'], -o['count:page_chars'], o['path']
 
 
-def compute_metrics():
+def compute_metrics(max_processed=-1):
     nlp = spacy.load('en')
 
     files = glob(join(summaries_dir, '*.json'))
@@ -46,8 +49,9 @@ def compute_metrics():
         if n_page_words < threshold_words:
             continue
         n_processed += 1
-        # if n_processed > 5:
-        #     break
+        if max_processed > 0:
+            if n_processed > max_processed:
+               break
 
         print('%3d: %s' % (n_processed, summary['path']))
         cnt_page_para.append(len(summary['text:paras']))
@@ -63,6 +67,8 @@ def compute_metrics():
                 cs = 0
                 for tok in sent:
                     word = tok.text
+                    if tok.pos in {SPACE, NUM, PUNCT, SYM}:
+                        continue
                     vocab[word] += 1
                     wp += 1
                     ws += 1
@@ -83,7 +89,9 @@ def compute_metrics():
         'cnt_sent_word': cnt_sent_word,
         'cnt_sent_char': cnt_sent_char,
         'cnt_word_char': cnt_word_char,
-        'vocab': vocab
+        'vocab': vocab,
+        'n_files': len(files),
+        'n_uniques': len(uniques),
     }
     return all_metrics
 
@@ -125,11 +133,49 @@ def show_metrics(all_metrics, max_vocab=50):
         n = vocab[word]
         print('%5d: %7d %4.1f%% %r' % (i, n, n / n_words * 100.0, word))
 
+    # plt.xscale('log')
+    if False:
+        bins = np.arange(0, 500)
+        plt.hist(cnt_page_para, bins=bins)
+        plt.title('Paragraphs per Page')
+        plt.xlim((1, 70))
+        plt.show()
+
+    if False:
+        bins = np.arange(0, 80)
+        plt.hist(cnt_sent_word, bins=bins)
+        plt.title('Words per Sentence')
+        plt.xlim((1, 50))
+        plt.show()
+
+    if False:
+        bins = np.arange(1, 10)
+        plt.hist(cnt_para_sent, bins=bins)
+        plt.title('Sentences per Paragraph')
+        plt.xlim((1, 10))
+        plt.show()
+
+    if False:
+        bins = np.arange(1, 20)
+        plt.hist(cnt_word_char, bins=bins)
+        plt.title('Characters per Word')
+        plt.xlim((1, 20))
+        plt.show()
+
+    plt.xscale('log')
+    plt.yscale('log')
+    bins = np.arange(1, 10)
+    plt.plot(sorted(vocab.values())[::-1])
+    plt.title('Word Frequencies (log : log)')
+    # plt.xlim((1, 10))
+    plt.show()
+
 
 if False:
-    all_metrics = compute_metrics()
+    all_metrics = compute_metrics(max_processed=-1)
     save_json('all_metrics.json', all_metrics)
 if True:
     all_metrics = load_json('all_metrics.json')
-    show_metrics(all_metrics)
+    show_metrics(all_metrics, max_vocab=5)
+
 

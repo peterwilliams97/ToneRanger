@@ -41,7 +41,7 @@ def html_to_paras(path):
     # # return soup.get_text()
 
 
-def save_summary(in_root, summaries_dir, php_path):
+def save_summary(in_root, summaries_dir, php_path, visited):
     """Extract text from `php_path`, break it into pages and write the summary to 'summary_path
     """
     summary_name = path_to_name(in_root, php_path)
@@ -63,6 +63,11 @@ def save_summary(in_root, summaries_dir, php_path):
 
     if not text:
         return
+
+    hsh = hash(text)
+    if hsh in visited:
+        return
+    visited.add(hsh)
 
     summary = {
         'path': php_path,
@@ -126,11 +131,15 @@ if True:
 # php_files = ['/Users/pcadmin/code/ToneRanger/paper_spider/data/@_']
 
 print('%d files' % len(files))
+visited = set()
 for i, path in enumerate(files):
     # if not isfile(path):
     #     continue
     # print('-' * 80)
     print('%4d: %s' % (i, path))
-    save_summary(root, summaries_dir, path)
+    save_summary(root, summaries_dir, path, visited)
     # # describe(path)
     False
+print('%d files' % len(files))
+print('%d unique' % len(visited))
+

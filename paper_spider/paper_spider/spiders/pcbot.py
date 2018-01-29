@@ -76,8 +76,8 @@ class PcbotSpider(scrapy.Spider):
 
         self._save_response(response)
 
-        print('visited=%d %d saved=%d t=%.1f %s' % (len(self.visited_url), len(self.visited_body),
-            self.n_saved, clock() - self.t0, response.url), flush=True)
+        print('visited=%d %d saved=%d %s' % (len(self.visited_url), len(self.visited_body),
+            self.n_saved, response.url), flush=True)
 
         assert not response.url.endswith('.jpg')
         assert not response.url.endswith('.png')

@@ -56,13 +56,11 @@ def compute_metrics(max_processed=-1):
     files = glob(join(summaries_dir, '*.json'))
     print('%4d files' % len(files))
     summaries = [load_json(path) for path in files]
-    uniques = {hash(o['text:page']): o for o in summaries}
-    print('%4d uniques' % len(uniques))
-    summaries = sorted(uniques.values(), key=summary_key)
+    summaries.sort(key=summary_key)
 
-    para_count = defaultdict(int)
-    sent_count = defaultdict(int)
-    word_count = defaultdict(int)
+    para_dist = defaultdict(int)
+    sent_dist = defaultdict(int)
+    word_dist = defaultdict(int)
     para_docs = defaultdict(set)
     sent_docs = defaultdict(set)
     word_docs = defaultdict(set)
@@ -88,7 +86,7 @@ def compute_metrics(max_processed=-1):
         cnt_page_para.append(len(summary['text:paras']))
 
         for para in summary['text:paras']:
-            para_count[para] += 1
+            para_dist[para] += 1
             para_docs[para].add(page_path)
             doc = nlp(para)
 
@@ -96,7 +94,7 @@ def compute_metrics(max_processed=-1):
             wp = 0
             cp = 0
             for sent in doc.sents:
-                sent_count[sent.text] += 1
+                sent_dist[sent.text] += 1
                 sent_docs[sent.text].add(page_path)
                 sp += 1
                 ws = 0
@@ -105,7 +103,7 @@ def compute_metrics(max_processed=-1):
                     word = tok.text
                     if tok.pos in {SPACE, NUM, PUNCT, SYM}:
                         continue
-                    word_count[word] += 1
+                    word_dist[word] += 1
                     word_docs[word].add(page_path)
                     wp += 1
                     ws += 1
@@ -129,9 +127,9 @@ def compute_metrics(max_processed=-1):
     }
 
     dist_metrics = {
-        'para_count': para_count,
-        'sent_count': sent_count,
-        'word_count': word_count,
+        'para_dist': para_dist,
+        'sent_dist': sent_dist,
+        'word_dist': word_dist,
     }
 
     n_dup_thresh = max(2, n_processed // 50)
@@ -147,40 +145,23 @@ def compute_metrics(max_processed=-1):
         'cnt_metrics': cnt_metrics,
         'dist_metrics': dist_metrics,
         'doc_metrics': doc_metrics,
-        # 'cnt_page_para': cnt_page_para,
-        # 'cnt_para_sent': cnt_para_sent,
-        # 'cnt_para_word': cnt_para_word,
-        # 'cnt_para_char': cnt_para_char,
-        # 'cnt_sent_word': cnt_sent_word,
-        # 'cnt_sent_char': cnt_sent_char,
-        # 'cnt_word_char': cnt_word_char,
-        # 'para_count': para_count,
-        # 'sent_count': sent_count,
-        # 'word_count': word_count,
-        # 'para_docs': {k: len(v) for k, v in para_docs.items()},
-        # 'sent_docs': {k: len(v) for k, v in sent_docs.items()},
-        # 'word_docs': {k: len(v) for k, v in word_docs.items()},
-        # 'para_docs_vals': {k: sorted(v)[:20] for k, v in para_docs.items() if len(v) >= n_processed // 50},
-        # 'sent_docs_vals': {k: sorted(v)[:20] for k, v in sent_docs.items() if len(v) >= n_processed // 50},
-        # # 'word_docs_vals': sorted(word_docs)[:20],,
         'n_files': len(files),
-        'n_uniques': len(uniques),
         'n_processed': n_processed,
     }
 
     return all_metrics
 
 
-def show_count(term_count, title, max_count, n_pages=-1):
+def show_dist(term_dist, title, max_dist, n_pages=-1):
     """
         Show cumulative if not a docs count (n_pages == -11)
     """
-    total = sum(term_count.values())
+    total = sum(term_dist.values())
     print('-' * 80)
-    print('%s most frequent. %d counts %d total' % (title, len(term_count), total))
+    print('%s most frequent. %d counts %d total' % (title, len(term_dist), total))
     t = 0
-    for i, term in enumerate(sorted(term_count, key=lambda w: (-term_count[w], -len(w), w))[:max_count]):
-        n = term_count[term]
+    for i, term in enumerate(sorted(term_dist, key=lambda w: (-term_dist[w], -len(w), w))[:max_dist]):
+        n = term_dist[term]
         t += n
         if n_pages <= 0:
             print('%5d: %7d %4.1f%% (%4.1f%%) %r' % (i, n, n / total * 100.0, t / total * 100.0, term))
@@ -188,7 +169,7 @@ def show_count(term_count, title, max_count, n_pages=-1):
             print('%5d: %7d (%4.1f%% docs) %r' % (i, n, n / n_pages * 100.0, term))
 
 
-def show_metrics(all_metrics, max_count=50, do_plot=False):
+def show_metrics(all_metrics, max_dist=50, do_plot=False):
 
     cnt_metrics = all_metrics['cnt_metrics']
     dist_metrics = all_metrics['dist_metrics']
@@ -201,9 +182,9 @@ def show_metrics(all_metrics, max_count=50, do_plot=False):
     cnt_sent_word = cnt_metrics['cnt_sent_word']
     cnt_sent_char = cnt_metrics['cnt_sent_char']
     cnt_word_char = cnt_metrics['cnt_word_char']
-    para_count = dist_metrics['para_count']  # !@#$ _count -> _dist
-    sent_count = dist_metrics['sent_count']
-    word_count = dist_metrics['word_count']
+    para_dist = dist_metrics['para_dist']
+    sent_dist = dist_metrics['sent_dist']
+    word_dist = dist_metrics['word_dist']
     para_docs = doc_metrics['para_docs']
     sent_docs = doc_metrics['sent_docs']
     word_docs = doc_metrics['word_docs']
@@ -211,17 +192,18 @@ def show_metrics(all_metrics, max_count=50, do_plot=False):
     n_chars = sum(cnt_sent_char)
     n_words = sum(cnt_para_word)
     n_words2 = sum(cnt_sent_word)
-    n_words3 = sum(word_count.values())
+    n_words3 = sum(word_dist.values())
     n_sents = sum(cnt_para_sent)
     n_paras = sum(cnt_page_para)
     n_pages = len(cnt_page_para)
+
     print('=' * 80)
     print('pages: %8d' % n_pages)
     print('paras: %8d' % n_paras)
     print('sents: %8d' % n_sents)
     print('words: %8d=%d=%d' % (n_words, n_words2, n_words3))
     print('chars: %8d' % n_chars)
-    print('word_count: %8d' % len(word_count))
+    print('word_dist: %8d' % len(word_dist))
     print('cnt_page_para: %8d' % len(cnt_page_para))
     print('cnt_para_sent: %8d' % len(cnt_para_sent))
     print('cnt_para_word: %8d' % len(cnt_para_word))
@@ -229,27 +211,13 @@ def show_metrics(all_metrics, max_count=50, do_plot=False):
     print('cnt_sent_word: %8d' % len(cnt_sent_word))
     print('cnt_word_char: %8d' % len(cnt_word_char))
 
-    if max_count > 0:
-        show_count(para_count, 'para_count', max_count)
-        show_count(sent_count, 'sent_count', max_count)
-        show_count(word_count, 'word_count', max_count)
-        show_count(para_docs, 'para_docs', max_count, n_pages=n_pages)
-        show_count(sent_docs, 'sent_docs', max_count, n_pages=n_pages)
-        show_count(word_docs, 'word_docs', max_count, n_pages=n_pages)
-
-    if False:
-        print('-' * 80)
-        for i, word in enumerate(sorted(word_count, key=lambda w: (-word_count[w], w))[:max_count]):
-            n = word_count[word]
-            print('%5d: %7d %4.1f%% %r' % (i, n, n / n_words * 100.0, word))
-        print('-' * 80)
-        for i, sent in enumerate(sorted(sent_count, key=lambda w: (-sent_count[w], w))[:max_count]):
-            n = sent_count[sent]
-            print('%5d: %7d %4.1f%% %r' % (i, n, n / n_sents * 100.0, sent))
-        print('-' * 80)
-        for i, para in enumerate(sorted(para_count, key=lambda w: (-para_count[w], w))[:max_count]):
-            n = par_count[sent]
-            print('%5d: %7d %4.1f%% %r' % (i, n, n / n_sents * 100.0, sent))
+    if max_dist > 0:
+        show_dist(para_dist, 'para_dist', max_dist)
+        show_dist(sent_dist, 'sent_dist', max_dist)
+        show_dist(word_dist, 'word_dist', max_dist)
+        show_dist(para_docs, 'para_docs', max_dist, n_pages=n_pages)
+        show_dist(sent_docs, 'sent_docs', max_dist, n_pages=n_pages)
+        show_dist(word_docs, 'word_docs', max_dist, n_pages=n_pages)
 
     if do_plot:
         # plt.xscale('log')
@@ -261,7 +229,7 @@ def show_metrics(all_metrics, max_count=50, do_plot=False):
         if False:
             plt.xscale('log')
             plt.yscale('log')
-            plt.plot(sorted(word_count.values())[::-1])
+            plt.plot(sorted(word_dist.values())[::-1])
             plt.title('Word Frequencies (log : log)')
             plt.show()
 
@@ -271,4 +239,4 @@ if True:
     save_json('all_metrics.json', all_metrics)
 if True:
     all_metrics = load_json('all_metrics.json')
-    show_metrics(all_metrics, max_count=250)
+    show_metrics(all_metrics, max_dist=250)

@@ -39,8 +39,4 @@ html pages to the `ToneRanger/paper_spider/pc_data/` directory
 # Spider
 [web-scraping-in-python-using-scrapy](https://www.analyticsvidhya.com/blog/2017/07/web-scraping-in-python-using-scrapy/)
 
-#TODO
-Multiple spaces --> ' '
-Multiple \n --> \n
-https://www.fileformat.info/info/unicode/char/201c/index.htm “ --> "
-https://www.fileformat.info/info/unicode/char/201d/index.htm ” --> "
+# TODO

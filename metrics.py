@@ -63,6 +63,9 @@ def compute_metrics(max_processed=-1):
     para_count = defaultdict(int)
     sent_count = defaultdict(int)
     word_count = defaultdict(int)
+    para_docs = defaultdict(set)
+    sent_docs = defaultdict(set)
+    word_docs = defaultdict(set)
     cnt_page_para = []
     cnt_para_sent = []
     cnt_para_word = []
@@ -72,6 +75,7 @@ def compute_metrics(max_processed=-1):
     cnt_word_char = []
     n_processed = 0
     for summary in summaries:
+        page_path = summary['path']
         n_page_words = sum(sum(v) for v in summary['count:sent_chars'])
         if n_page_words < threshold_words:
             continue
@@ -85,6 +89,7 @@ def compute_metrics(max_processed=-1):
 
         for para in summary['text:paras']:
             para_count[para] += 1
+            para_docs[para].add(page_path)
             doc = nlp(para)
 
             sp = 0
@@ -92,6 +97,7 @@ def compute_metrics(max_processed=-1):
             cp = 0
             for sent in doc.sents:
                 sent_count[sent.text] += 1
+                sent_docs[sent.text].add(page_path)
                 sp += 1
                 ws = 0
                 cs = 0
@@ -100,6 +106,7 @@ def compute_metrics(max_processed=-1):
                     if tok.pos in {SPACE, NUM, PUNCT, SYM}:
                         continue
                     word_count[word] += 1
+                    word_docs[word].add(page_path)
                     wp += 1
                     ws += 1
                     cp += len(word)
@@ -111,7 +118,7 @@ def compute_metrics(max_processed=-1):
             cnt_para_word.append(wp)
             cnt_para_char.append(cp)
 
-    all_metrics = {
+    cnt_metrics = {
         'cnt_page_para': cnt_page_para,
         'cnt_para_sent': cnt_para_sent,
         'cnt_para_word': cnt_para_word,
@@ -119,16 +126,55 @@ def compute_metrics(max_processed=-1):
         'cnt_sent_word': cnt_sent_word,
         'cnt_sent_char': cnt_sent_char,
         'cnt_word_char': cnt_word_char,
+    }
+
+    dist_metrics = {
         'para_count': para_count,
         'sent_count': sent_count,
         'word_count': word_count,
+    }
+
+    n_dup_thresh = max(2, n_processed // 50)
+    doc_metrics = {
+        'para_docs': {k: len(v) for k, v in para_docs.items()},
+        'sent_docs': {k: len(v) for k, v in sent_docs.items()},
+        'word_docs': {k: len(v) for k, v in word_docs.items()},
+        'para_docs_vals': {k: sorted(v)[:20] for k, v in para_docs.items() if len(v) >= n_dup_thresh},
+        'sent_docs_vals': {k: sorted(v)[:20] for k, v in sent_docs.items() if len(v) >= n_dup_thresh},
+    }
+
+    all_metrics = {
+        'cnt_metrics': cnt_metrics,
+        'dist_metrics': dist_metrics,
+        'doc_metrics': doc_metrics,
+        # 'cnt_page_para': cnt_page_para,
+        # 'cnt_para_sent': cnt_para_sent,
+        # 'cnt_para_word': cnt_para_word,
+        # 'cnt_para_char': cnt_para_char,
+        # 'cnt_sent_word': cnt_sent_word,
+        # 'cnt_sent_char': cnt_sent_char,
+        # 'cnt_word_char': cnt_word_char,
+        # 'para_count': para_count,
+        # 'sent_count': sent_count,
+        # 'word_count': word_count,
+        # 'para_docs': {k: len(v) for k, v in para_docs.items()},
+        # 'sent_docs': {k: len(v) for k, v in sent_docs.items()},
+        # 'word_docs': {k: len(v) for k, v in word_docs.items()},
+        # 'para_docs_vals': {k: sorted(v)[:20] for k, v in para_docs.items() if len(v) >= n_processed // 50},
+        # 'sent_docs_vals': {k: sorted(v)[:20] for k, v in sent_docs.items() if len(v) >= n_processed // 50},
+        # # 'word_docs_vals': sorted(word_docs)[:20],,
         'n_files': len(files),
         'n_uniques': len(uniques),
+        'n_processed': n_processed,
     }
+
     return all_metrics
 
 
-def show_count(term_count, title, max_count):
+def show_count(term_count, title, max_count, n_pages=-1):
+    """
+        Show cumulative if not a docs count (n_pages == -11)
+    """
     total = sum(term_count.values())
     print('-' * 80)
     print('%s most frequent. %d counts %d total' % (title, len(term_count), total))
@@ -136,21 +182,31 @@ def show_count(term_count, title, max_count):
     for i, term in enumerate(sorted(term_count, key=lambda w: (-term_count[w], -len(w), w))[:max_count]):
         n = term_count[term]
         t += n
-        print('%5d: %7d %4.1f%% (%4.1f%%) %r' % (i, n, n / total * 100.0, t / total * 100.0, term))
+        if n_pages <= 0:
+            print('%5d: %7d %4.1f%% (%4.1f%%) %r' % (i, n, n / total * 100.0, t / total * 100.0, term))
+        else:
+            print('%5d: %7d (%4.1f%% docs) %r' % (i, n, n / n_pages * 100.0, term))
 
 
 def show_metrics(all_metrics, max_count=50, do_plot=False):
 
-    cnt_page_para = all_metrics['cnt_page_para']
-    cnt_para_sent = all_metrics['cnt_para_sent']
-    cnt_para_word = all_metrics['cnt_para_word']
-    cnt_para_char = all_metrics['cnt_para_char']
-    cnt_sent_word = all_metrics['cnt_sent_word']
-    cnt_sent_char = all_metrics['cnt_sent_char']
-    cnt_word_char = all_metrics['cnt_word_char']
-    para_count = all_metrics['para_count']
-    sent_count = all_metrics['sent_count']
-    word_count = all_metrics['word_count']
+    cnt_metrics = all_metrics['cnt_metrics']
+    dist_metrics = all_metrics['dist_metrics']
+    doc_metrics = all_metrics['doc_metrics']
+
+    cnt_page_para = cnt_metrics['cnt_page_para']
+    cnt_para_sent = cnt_metrics['cnt_para_sent']
+    cnt_para_word = cnt_metrics['cnt_para_word']
+    cnt_para_char = cnt_metrics['cnt_para_char']
+    cnt_sent_word = cnt_metrics['cnt_sent_word']
+    cnt_sent_char = cnt_metrics['cnt_sent_char']
+    cnt_word_char = cnt_metrics['cnt_word_char']
+    para_count = dist_metrics['para_count']  # !@#$ _count -> _dist
+    sent_count = dist_metrics['sent_count']
+    word_count = dist_metrics['word_count']
+    para_docs = doc_metrics['para_docs']
+    sent_docs = doc_metrics['sent_docs']
+    word_docs = doc_metrics['word_docs']
 
     n_chars = sum(cnt_sent_char)
     n_words = sum(cnt_para_word)
@@ -175,8 +231,11 @@ def show_metrics(all_metrics, max_count=50, do_plot=False):
 
     if max_count > 0:
         show_count(para_count, 'para_count', max_count)
-        show_count(sent_count, 'send_count', max_count)
+        show_count(sent_count, 'sent_count', max_count)
         show_count(word_count, 'word_count', max_count)
+        show_count(para_docs, 'para_docs', max_count, n_pages=n_pages)
+        show_count(sent_docs, 'sent_docs', max_count, n_pages=n_pages)
+        show_count(word_docs, 'word_docs', max_count, n_pages=n_pages)
 
     if False:
         print('-' * 80)

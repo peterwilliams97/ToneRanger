@@ -6,9 +6,9 @@ import logging
 import time
 import multiprocessing
 import os
-import re
 import gensim.models.word2vec as w2v
 import sklearn.manifold
+from sklearn.externals import joblib
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
@@ -18,16 +18,16 @@ import utils
 
 
 do_lowercase = False
-do_spacy = True
 
-do_tokenize = False
-do_train = True
-do_plots = False
+force_tokenize = False
+force_train = False
+force_tnse = False
+do_plots = True
 
 # Dimensions of word vectors.
 num_features = 600
 # Minimum number of times word must occur in sentences to be used in model.
-min_word_count = 1
+min_word_count = 3
 # Number of threads to run in parallel.
 num_workers = multiprocessing.cpu_count()
 # Context window length.
@@ -46,15 +46,15 @@ model_name = "papercut"
 base_name = '%s.w%d.f%d.c%d' % (model_name, min_word_count, num_features, context_size)
 model_name = '%s.w2v' % base_name
 log_name = '%s.log' % base_name
+tsne_name = '%s.tsne.pkl' % base_name
 
 if do_lowercase:
     train_dir = '%s.lower' % train_dir
-if do_spacy:
-    train_dir = '%s.spacy' % train_dir
-    nlp = spacy.load('en')
+train_dir = '%s.spacy' % train_dir
 words_path = os.path.join(train_dir, 'words.json')
 log_path = os.path.join(train_dir, log_name)
 model_path = os.path.join(train_dir, model_name)
+tsne_path = os.path.join(train_dir, tsne_name)
 
 log_f = open(log_path, 'wt')
 
@@ -64,29 +64,22 @@ def my_print(*args):
     print(args, file=log_f)
 
 
-if do_tokenize:
+if force_tokenize or not os.path.exists(words_path):
+    nlp = spacy.load('en')
+
     raw_sentences = utils.load_json(sentences_path)
     if do_lowercase:
         raw_sentences = [raw.lower() for raw in raw_sentences]
 
     # convert into a list of words
-    # remove unnnecessary,, split into words, no hyphens
-    # list of words
-    if do_spacy:
-        def sentence_to_wordlist(raw):
-            sent = nlp(raw)
-            words = []
-            for tok in sent:
-                word = tok.text
-                if tok.pos in {SPACE, NUM, PUNCT, SYM}:
-                    continue
-                words.append(tok.text)
-            return words
-    else:
-        def sentence_to_wordlist(raw):
-            clean = re.sub("[^a-zA-Z]", " ", raw)
-            words = clean.split()
-            return words
+    def sentence_to_wordlist(raw):
+        sent = nlp(raw)
+        words = []
+        for tok in sent:
+            if tok.pos in {SPACE, NUM, PUNCT, SYM}:
+                continue
+            words.append(tok.text)
+        return words
 
     # sentence where each word is tokenized
     sentences = []
@@ -107,10 +100,8 @@ if do_tokenize:
     my_print("The book corpus contains {0:,} tokens".format(token_count))
 
     utils.save_json(words_path, sentences)
-    # assert False
 
-
-if do_train:
+if force_train or not os.path.exists(model_path):
 
     sentences = utils.load_json(words_path)
 
@@ -127,10 +118,6 @@ if do_train:
     tranger2vec.build_vocab(sentences)
     my_print("Word2Vec vocabulary length:", len(tranger2vec.wv.vocab))
     my_print(type(tranger2vec.wv.vocab))
-    assert 'Kelby' in tranger2vec.wv.vocab
-    for sent in sentences:
-        for word in sent:
-            assert word in tranger2vec.wv.vocab, word
 
     tranger2vec.train(sentences,
                       total_examples=tranger2vec.corpus_count,
@@ -139,23 +126,27 @@ if do_train:
     os.makedirs(train_dir, exist_ok=True)
     tranger2vec.save(model_path)
 
-
 #
 # Show word similarities
 #
 tranger2vec = w2v.Word2Vec.load(model_path)
 
+if force_tnse or not os.path.exists(tsne_path):
 
-if do_plots:
     # ### Compress the word vectors into 2D space and plot them
     tsne = sklearn.manifold.TSNE(n_components=2, random_state=0)
 
     all_word_vectors_matrix = tranger2vec.wv.syn0
 
-    my_print('t-sne')
+    print('t-sne')
+    t0 = time.clock()
     all_word_vectors_matrix_2d = tsne.fit_transform(all_word_vectors_matrix)
+    my_print('t-sne took %1.f sec' % (time.clock() - t0))
 
+    joblib.dump(all_word_vectors_matrix_2d, tsne_path)
 
+if do_plots:
+    all_word_vectors_matrix_2d = joblib.load(tsne_path)
     # **Plot the big picture**
     points = pd.DataFrame(
         [
@@ -173,9 +164,8 @@ if do_plots:
 
     sns.set_context("poster")
     my_print('plot')
-    points.plot.scatter("x", "y", s=10, figsize=(20, 12))
+    points.plot.scatter("x", "y", s=10, figsize=(10, 6))
     plt.show()
-
 
     def plot_region(x_bounds, y_bounds):
         """ Zoom in to some interesting places """
@@ -185,16 +175,15 @@ if do_plots:
         ]
         my_print(type(slice))
         my_print(slice.describe())
+        if slice.empty:
+            print('nothing to plot')
+            return
         ax = slice.plot.scatter("x", "y", s=35, figsize=(10, 8))
         for i, point in slice.iterrows():
             ax.text(point.x + 0.005, point.y + 0.005, point.word, fontsize=11)
 
-
-    # **People related to Kingsguard ended up together**
     plot_region(x_bounds=(0, 0.8), y_bounds=(0, 2))
     # plot_region(x_bounds=(4.0, 4.2), y_bounds=(-0.5, -0.1))
-
-    # **Food products are grouped nicely as well. Aerys (The Mad King) being close to "roasted" also looks sadly correct**
     plot_region(x_bounds=(0, 1), y_bounds=(3, 4.5))
 
 

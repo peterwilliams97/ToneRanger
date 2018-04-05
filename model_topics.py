@@ -1,15 +1,12 @@
 """
-    Compute some metrics
+    Topic modelling
 
-    Sentences / paragraph
-    Words / paragrah
-    Characters / paragraph
-    Words / sentence
-    Characters / sentence
-    Characters / word
-    Word counts
+    Follow https://github.com/RaRe-Technologies/gensim/blob/develop/docs/notebooks/topic_methods.ipynb
+
+    Better: https://github.com/RaRe-Technologies/gensim/blob/develop/docs/notebooks/gensim_news_classification.ipynb
 """
 from glob import glob
+import os
 from os.path import join
 import spacy
 from spacy.symbols import SPACE, PUNCT, NUM, SYM
@@ -17,6 +14,250 @@ from utils import summaries_dir, load_json, save_json
 from collections import defaultdict
 import numpy as np
 import matplotlib.pyplot as plt
+import logging
+from pprint import pprint
+from gensim import corpora
+from gensim.models import Word2Vec, KeyedVectors
+from gensim.models.word2vec import Text8Corpus
+from gensim.corpora import Dictionary
+from gensim.models import ldamodel
+
+
+np.set_printoptions(linewidth=150)
+
+TEMP_FOLDER = 'temp'
+os.makedirs(TEMP_FOLDER, exist_ok=True)
+
+logging.basicConfig(format='%(asctime)s %(filename)s:%(lineno)s %(levelname)s: %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S', level=logging.INFO)
+
+logger = logging.getLogger()
+logger.info('Hello')
+log = logger.info
+log('Folder "{}" will be used to save temporary dictionary and corpus.'.format(TEMP_FOLDER))
+
+
+texts = [['bank', 'river', 'shore', 'water'],
+        ['river', 'water', 'flow', 'fast', 'tree'],
+        ['bank', 'water', 'fall', 'flow'],
+        ['bank', 'bank', 'water', 'rain', 'river'],
+        ['river', 'water', 'mud', 'tree'],
+        ['money', 'transaction', 'bank', 'finance'],
+        ['bank', 'borrow', 'money'],
+        ['bank', 'finance'],
+        ['finance', 'money', 'sell', 'bank'],
+        ['borrow', 'sell'],
+        ['bank', 'loan', 'sell']]
+
+dictionary = Dictionary(texts)
+corpus = [dictionary.doc2bow(text) for text in texts]
+
+pprint(texts)
+pprint(dictionary)
+# corpus1 = [[x for x, y in c] for c in corpus]
+# corpus2 = [[y for x, y in c] for c in corpus]
+# pprint(corpus1)
+# pprint(corpus2)
+# print(type(corpus))
+# print(type(corpus[0]))
+# print(type(corpus[0][0]))
+
+
+np.random.seed(1)  # setting random seed to get the same results each time.
+models = []
+for n in range(2, 3):
+    print('-' * 100)
+    model = ldamodel.LdaModel(corpus, id2word=dictionary, num_topics=n)
+    models.append((n, model))
+
+for n, model in models:
+    print('-' * 100)
+    print(n)
+    model = ldamodel.LdaModel(corpus, id2word=dictionary, num_topics=n)
+    model.show_topics()
+
+    for term in ('water', 'money', 'bank', 'transaction', 'mud'):
+        print('^' * 100)
+        print(term)
+        topics = model.get_term_topics(term)
+        print(topics)
+
+
+bow_water = ['bank', 'water', 'bank']
+bow_finance = ['bank', 'finance', 'bank']
+
+
+for terms in (bow_water, bow_finance):
+    print('~' * 100)
+    print(terms)
+    bow = model.id2word.doc2bow(terms)  # convert to bag of words format first
+    doc_topics, word_topics, phi_values = model.get_document_topics(bow, per_word_topics=True)
+    pprint(doc_topics)
+    pprint(word_topics)
+    pprint(phi_values)
+
+
+all_topics = model.get_document_topics(corpus, per_word_topics=True)
+
+for text, (doc_topics, word_topics, phi_values) in zip(texts, all_topics):
+    print('@' * 100)
+    print(len(text), text)
+    pprint(doc_topics)
+    pprint(word_topics)
+    pprint(phi_values)
+
+
+def color_words(model, doc):
+    import matplotlib.pyplot as plt
+    # import matplotlib.patches as patches
+
+    # make into bag of words
+    doc = model.id2word.doc2bow(doc)
+    # get word_topics
+    doc_topics, word_topics, phi_values = model.get_document_topics(doc, per_word_topics=True)
+
+    # color-topic matching
+    topic_colors = {1: 'red', 0: 'blue'}
+
+    # set up fig to plot
+    fig = plt.figure()
+    ax = fig.add_axes([0, 0, 1, 1])
+
+    # a sort of hack to make sure the words are well spaced out.
+    word_pos = 1 / len(doc)
+
+    # use matplotlib to plot words
+    for word, topics in word_topics:
+        ax.text(word_pos, 0.8, model.id2word[word],
+                horizontalalignment='center',
+                verticalalignment='center',
+                fontsize=20, color=topic_colors[topics[0]],  # choose just the most likely topic
+                transform=ax.transAxes)
+        word_pos += 0.2  # to move the word for the next iter
+
+    ax.set_axis_off()
+    plt.show()
+
+# bow_water = ['bank', 'water', 'bank']
+# color_words(model, bow_water)
+
+# bow_finance = ['bank', 'finance', 'bank']
+# color_words(model, bow_finance)
+
+doc = ['bank', 'water', 'bank', 'finance', 'money','sell','river','fast','tree']
+color_words(model, doc)
+
+def color_words_dict(model, dictionary):
+    import matplotlib.pyplot as plt
+    import matplotlib.patches as patches
+
+    word_topics = []
+    for word_id in dictionary:
+        word = str(dictionary[word_id])
+        # get_term_topics returns static topics, as mentioned before
+        probs = model.get_term_topics(word)
+        # we are creating word_topics which is similar to the one created by get_document_topics
+        try:
+            if probs[0][1] >= probs[1][1]:
+                word_topics.append((word_id, [0, 1]))
+            else:
+                word_topics.append((word_id, [1, 0]))
+        # this in the case only one topic is returned
+        except IndexError:
+            word_topics.append((word_id, [probs[0][0]]))
+
+    # color-topic matching
+    topic_colors = { 1:'red', 0:'blue'}
+
+    # set up fig to plot
+    fig = plt.figure()
+    ax = fig.add_axes([0,0,1,1])
+
+    # a sort of hack to make sure the words are well spaced out.
+    word_pos = 1/len(doc)
+
+    # use matplotlib to plot words
+    for word, topics in word_topics:
+        ax.text(word_pos, 0.8, model.id2word[word],
+                horizontalalignment='center',
+                verticalalignment='center',
+                fontsize=20, color=topic_colors[topics[0]],  # choose just the most likely topic
+                transform=ax.transAxes)
+        word_pos += 0.2 # to move the word for the next iter
+
+    ax.set_axis_off()
+    plt.show()
+
+color_words_dict(model, dictionary)
+
+
+assert False
+################################################################################
+documents = ["Human machine interface for lab abc computer applications",
+             "A survey of user opinion of computer system response time",
+             "The EPS user interface management system",
+             "System and human system engineering testing of EPS",
+             "Relation of user perceived response time to error measurement",
+             "The generation of random binary unordered trees",
+             "The intersection graph of paths in trees",
+             "Graph minors IV Widths of trees and well quasi ordering",
+             "Graph minors A survey"]
+
+pprint(documents)
+
+
+# remove common words and tokenize
+stoplist = set('for a of the and to in'.split())
+texts = [[word for word in document.lower().split() if word not in stoplist]
+         for document in documents]
+pprint(texts)
+
+# remove words that appear only once
+
+frequency = defaultdict(int)
+for text in texts:
+    for token in text:
+        frequency[token] += 1
+
+texts = [[token for token in text if frequency[token] > 1] for text in texts]
+
+pprint(texts)
+
+
+dictionary = corpora.Dictionary(texts)
+dictionary.save(join(TEMP_FOLDER, 'deerwester.dict'))  # store the dictionary, for future reference
+print(dictionary)
+print(dictionary.token2id)
+
+corpus = [dictionary.doc2bow(text) for text in texts]
+corpora.MmCorpus.serialize(os.path.join(TEMP_FOLDER, 'deerwester.mm'), corpus)  # store to disk, for later use
+for c in corpus:
+    print(c)
+
+print('=' * 100)
+
+from gensim.models import Word2Vec, KeyedVectors
+from gensim.models.word2vec import Text8Corpus
+# Using params from Word2Vec_FastText_Comparison
+
+params = {
+    'alpha': 0.05,
+    'size': 100,
+    'window': 5,
+    'iter': 5,
+    'min_count': 5,
+    'sample': 1e-4,
+    'sg': 1,
+    'hs': 0,
+    'negative': 5
+}
+
+text8 = os.path.expanduser('~/data/text8/text8')
+model = Word2Vec(Text8Corpus(text8), **params)
+print(model)
+
+assert False
+
 
 threshold_words = 10
 
@@ -237,9 +478,9 @@ def show_metrics(all_metrics, max_dist=50, do_plot=False):
             plt.show()
 
 
-if True:
+if False:
     all_metrics = compute_metrics(max_processed=-1)
     save_json('all_metrics.json', all_metrics)
-if True:
+if False:
     all_metrics = load_json('all_metrics.json')
     show_metrics(all_metrics, max_dist=250)

@@ -21,6 +21,7 @@ A program to detect the tone of documents.
 * `sent_chars`: Number of chars per word per sentence. List of list of integers.
 
 # Installation and Running
+    python -m spacy download en_core_web_lg
     git clone https://github.com/peterwilliams97/ToneRanger
     pushd ToneRanger/paper_spider
     scrapy crawl --logfile=mylog.log --loglevel=INFO pcbot
@@ -40,3 +41,7 @@ html pages to the `ToneRanger/paper_spider/pc_data/` directory
 [web-scraping-in-python-using-scrapy](https://www.analyticsvidhya.com/blog/2017/07/web-scraping-in-python-using-scrapy/)
 
 # TODO
+LIME
+Sentence similarity
+https://github.com/GateNLP/broad_twitter_corpus
+http://dlab.berkeley.edu/blog/scraping-new-york-times-articles-python-tutorial

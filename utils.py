@@ -38,13 +38,18 @@ def save_json(path, obj):
 
 
 def load_jsonl(path):
-    try:
-        with open(path, 'r') as f:
-            obj = json.load(f)
-    except jsonlines.decoder.JSONDecodeError:
-        print('load_jsonl failed: path=%r' % path)
-        raise
-    return obj
+    # try:
+    #     # with open(path, 'r') as f:
+    #     #     obj = json.load(f)
+
+    # except jsonlines.decoder.JSONDecodeError:
+    #     print('load_jsonl failed: path=%r' % path)
+    #     raise
+    obj_list = []
+    with jsonlines.open(path, mode='r') as r:
+        obj_list = list(r)
+        # obj = r.read_all(obj)
+    return obj_list
 
 
 templ_name = 'temp.jsonl'

@@ -4,7 +4,7 @@
 from glob import glob
 from os.path import join
 from collections import defaultdict
-from utils import summaries_dir, load_json, save_json
+from utils import summaries_dir, load_json, save_json, load_jsonl, save_jsonl
 
 
 threshold_words = 10
@@ -34,8 +34,13 @@ def extract_sentences(max_processed=-1):
     paras = sorted(para_count, key=sent_key)
     sents = sorted(sent_count, key=sent_key)
 
-    save_json('all.paragraphs.json', paras)
-    save_json('all.sentences.json', sents)
+    paras = [{'text': text} for text in paras]
+    sents = [{'text': text} for text in sents]
+
+    # {"text":"Uber\u2019s Lesson: Silicon Valley\u2019s Start-Up Machine Needs Fixing","meta":{"source":"The New York Times"}}
+
+    save_jsonl('pc.paragraphs.jsonl', paras)
+    save_jsonl('pc.sentences.jsonl', sents)
 
 
 extract_sentences()

@@ -25,7 +25,7 @@ force_tnse = False
 do_plots = True
 
 # Dimensions of word vectors.
-num_features = 600
+num_features = 200
 # Minimum number of times word must occur in sentences to be used in model.
 min_word_count = 3
 # Number of threads to run in parallel.
@@ -86,12 +86,13 @@ if force_tokenize or not os.path.exists(words_path):
     my_print('%7d sentences' % (len(raw_sentences)))
     interval = max(len(raw_sentences) // 50, 100)
 
-    t0 = time.clock()
+    t0 = time.perf_counter()
     for i, raw in enumerate(raw_sentences):
         if len(raw) > 0:
             sentences.append(sentence_to_wordlist(raw))
         if i % interval == 0 and interval:
-            my_print('%7d (%5.1f%%) %6.1f sec' % (i, 100.0 * i / len(raw_sentences), time.clock() - t0))
+            my_print('%7d (%5.1f%%) %6.1f sec' % (i, 100.0 * i / len(raw_sentences),
+                time.perf_counter() - t0))
 
     my_print('raw sentence 5:', raw_sentences[5])
     my_print('word list 5:', sentence_to_wordlist(raw_sentences[5]))
@@ -139,9 +140,9 @@ if force_tnse or not os.path.exists(tsne_path):
     all_word_vectors_matrix = tranger2vec.wv.syn0
 
     print('t-sne')
-    t0 = time.clock()
+    t0 = time.perf_counter()
     all_word_vectors_matrix_2d = tsne.fit_transform(all_word_vectors_matrix)
-    my_print('t-sne took %1.f sec' % (time.clock() - t0))
+    my_print('t-sne took %1.f sec' % (time.perf_counter() - t0))
 
     joblib.dump(all_word_vectors_matrix_2d, tsne_path)
 

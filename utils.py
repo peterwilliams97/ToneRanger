@@ -1,4 +1,5 @@
 import json
+import jsonlines
 from os.path import relpath
 from os import renames
 import re
@@ -33,6 +34,26 @@ def save_json(path, obj):
         json.dump(obj, f, indent=4, sort_keys=True)
     # remove(path)
     renames(temp_name, path)
+
+
+def load_jsonl(path):
+    try:
+        with open(path, 'r') as f:
+            obj = json.load(f)
+    except jsonlines.decoder.JSONDecodeError:
+        print('load_jsonl failed: path=%r' % path)
+        raise
+    return obj
+
+
+templ_name = 'temp.jsonl'
+
+
+def save_jsonl(path, obj):
+    with jsonlines.open(templ_name, mode='w') as w:
+        w.write_all(obj)
+    # remove(path)
+    renames(templ_name, path)
 
 
 RE_SEP = re.compile(r'[\\/\s\.:]+')

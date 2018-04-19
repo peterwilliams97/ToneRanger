@@ -15,7 +15,6 @@ from os import makedirs, rename
 from collections import defaultdict
 import spacy
 from utils import summaries_dir, load_json
-from collections import defaultdict
 import shutil
 
 
@@ -24,8 +23,6 @@ def summary_key(o):
 
 
 def deduplicate(verbose=False):
-    nlp = spacy.load('en')
-
     files = glob(join(summaries_dir, '*.json'))
     print('%4d files' % len(files))
     unique_lists = defaultdict(list)
@@ -58,5 +55,6 @@ def deduplicate(verbose=False):
             shutil.copy(path, unique_path)
         rename(summaries_dir, backup_dir)
         rename(uniques_dir, summaries_dir)
+
 
 deduplicate()

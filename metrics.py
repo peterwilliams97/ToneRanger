@@ -57,6 +57,9 @@ def compute_metrics(max_processed=-1):
     print('%4d files' % len(files))
     summaries = [load_json(path) for path in files]
     summaries.sort(key=summary_key)
+    # print(list(summaries[0]))
+    # print(summaries[0]['path'])
+    # assert False
 
     para_dist = defaultdict(int)
     sent_dist = defaultdict(int)

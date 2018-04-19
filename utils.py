@@ -1,7 +1,7 @@
 import json
 import jsonlines
-from os.path import relpath
-from os import renames
+from os.path import relpath, exists
+from os import renames, remove
 import re
 
 summaries_dir = 'page.summaries.scrapy'
@@ -32,7 +32,8 @@ temp_name = 'temp.json'
 def save_json(path, obj):
     with open(temp_name, 'w') as f:
         json.dump(obj, f, indent=4, sort_keys=True)
-    # remove(path)
+    if exists(path):
+        remove(path)
     renames(temp_name, path)
 
 
@@ -52,7 +53,8 @@ templ_name = 'temp.jsonl'
 def save_jsonl(path, obj):
     with jsonlines.open(templ_name, mode='w') as w:
         w.write_all(obj)
-    # remove(path)
+    if exists(path):
+        remove(path)
     renames(templ_name, path)
 
 

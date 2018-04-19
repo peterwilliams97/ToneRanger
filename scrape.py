@@ -13,9 +13,27 @@ RE_PHP = re.compile(r'<\?php.+?\s+\?>', re.DOTALL | re.MULTILINE)
 RE_IFRAME = re.compile(r'<iframe.*?>*.?</iframe>', re.DOTALL | re.MULTILINE)
 
 
+def is_text_popup(tag):
+    if not tag:
+        return False
+    if not tag.name:
+        return False
+    if tag.name not in {'div', 'span', 'a'}:
+        return False
+    cls = tag.get('class')
+    if not cls:
+        return False
+    # print('@@@', tag)
+    # print('!!!', tag.get('class'))
+    return any('MCText' in t for t in tag.get('class'))
+    # return tag and tag.name in {'div', 'span'} and 'MCText' in tag.get('class')
+
+
 def html_to_paras(path):
-    page = read_file(path)
-    page = RE_IFRAME.sub('', page)
+    page0 = read_file(path)
+    if not page0:
+        return []
+    page = RE_IFRAME.sub('', page0)
 
     soup = BeautifulSoup(page, 'html5lib')  # 'html.parser')
     for script in soup(["script", "style"]):
@@ -23,23 +41,42 @@ def html_to_paras(path):
     body = soup.find('body')
     if not body:
         return ''
+    # if (div["class"]=="stylelistrow"):
+
+    filtered = False
+    for p in body.find_all('p', recursive=True):
+        for div in p.find_all(is_text_popup):
+            # "span", {'class': 'MCTextPopup'}):
+            # print('$$$', div)
+            div.decompose()
+            filtered = True
     paras = [p.get_text() for p in body.find_all('p', recursive=True)]
+    # for p in body.find_all('p', recursive=True):
+
     paras = [clean_text(p) for p in paras]
     paras = [p for p in paras if p]
+
+    # if filtered:
+    #     print('$' * 80)
+    #     print(path)
+    #     print(len(page0))
+    #     print(page0[:200])
+    #     print(p[:200] for p in paras[:2])
+    #     assert False
 
     return paras
 
 
-def save_summary(in_root, summaries_dir, php_path, visited):
+def save_summary(php_path, summary_path, visited):
     """Extract text from `php_path`, break it into pages and write the summary to 'summary_path
     """
-    summary_name = path_to_name(in_root, php_path)
-    summary_path = abspath(join(summaries_dir, '%s.json' % summary_name))
+    # summary_name = path_to_name(in_root, php_path)
+    # summary_path = abspath(join(summaries_dir, '%s.json' % summary_name))
 
     paras = html_to_paras(php_path)
     text = '\n'.join(paras)
     if not text:
-        return
+        return False
 
     hsh = hash(text)
     if hsh in visited:
@@ -55,9 +92,10 @@ def save_summary(in_root, summaries_dir, php_path, visited):
     }
 
     save_json(summary_path, summary)
+    return True
 
 
-root = '/Users/pcadmin/code/ToneRanger/paper_spider/pc_data'
+root = 'c:/code/ToneRanger/paper_spider/pc_data'
 assert exists(root), root
 makedirs(summaries_dir, exist_ok=True)
 
@@ -66,9 +104,20 @@ files = [path for path in files if isfile(path)]
 print('%d files' % len(files))
 
 visited = set()
+summary_raw = {}
 for i, path in enumerate(files):
+    path = abspath(path)
     print('%4d: %s' % (i, path))
-    save_summary(root, summaries_dir, path, visited)
+    summary_name = path_to_name(summaries_dir, path)
+    summary_path = abspath(join(summaries_dir, '%s.json' % summary_name))
+    if not save_summary(path, summary_path, visited):
+        continue
+    summary_raw[summary_path] = path
+    if i % 100 == 99:
+        save_json('summary_raw.json', summary_raw)
+    assert exists(path), path
+    assert exists(summary_path), summary_path
 
+save_json('summary_raw.json', summary_raw)
 print('%d files' % len(files))
 print('%d unique' % len(visited))

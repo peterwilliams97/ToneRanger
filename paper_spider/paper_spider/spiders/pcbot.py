@@ -4,6 +4,7 @@ from scrapy.http import TextResponse, HtmlResponse
 from os import getcwd, makedirs
 from os.path import abspath, join
 from time import clock
+import utils
 
 
 web_root = 'https://www.papercut.com/'
@@ -43,6 +44,7 @@ class PcbotSpider(scrapy.Spider):
     def __init__(self):
         super().__init__()
         self.data_dir = abspath(data_root)
+        self.file_url = {}
         print('!!! %s' % getcwd())
         print('!!! %s' % self.data_dir)
         makedirs(self.data_dir, exist_ok=True)
@@ -53,8 +55,11 @@ class PcbotSpider(scrapy.Spider):
 
     def _save_response(self, response):
         filename = join(self.data_dir, local(response.url))
+        self.file_url[filename] = response.url
+
         with open(filename, 'wb') as f:
             f.write(response.body)
+        utils.save_json('file_url.json', self.file_url)
         self.n_saved += 1
         # scrapy.log('Saved file: %4d: %s' % (self.n_saved, filename))
 
@@ -77,7 +82,7 @@ class PcbotSpider(scrapy.Spider):
         self._save_response(response)
 
         print('visited=%d %d saved=%d %s' % (len(self.visited_url), len(self.visited_body),
-            self.n_saved, response.url), flush=True)
+              self.n_saved, response.url), flush=True)
 
         assert not response.url.endswith('.jpg')
         assert not response.url.endswith('.png')

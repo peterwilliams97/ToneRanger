@@ -1,6 +1,6 @@
 from bs4 import BeautifulSoup
 from glob import glob
-from os.path import join, exists, splitext, abspath, isfile
+from os.path import join, exists, splitext, abspath, isfile, expanduser
 from os import makedirs
 from collections import defaultdict
 import re
@@ -96,6 +96,12 @@ def save_summary(php_path, summary_path, visited):
 
 
 root = 'c:/code/ToneRanger/paper_spider/pc_data'
+
+root = 'c:/code/ToneRanger/paper_spider'
+root = '~/code/ToneRanger/paper_spider'
+root = expanduser(root)
+root = join(root, 'pc_data')
+print('root=%s' % root)
 assert exists(root), root
 makedirs(summaries_dir, exist_ok=True)
 

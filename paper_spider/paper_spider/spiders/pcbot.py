@@ -7,7 +7,7 @@ from time import clock
 import utils
 
 
-web_root = 'https://www.papercut.com/'
+web_root = 'https://blog.papercut.com/'
 data_root = 'pc_data'
 
 
@@ -34,9 +34,9 @@ if False:
 class PcbotSpider(scrapy.Spider):
     name = 'pcbot'
     allowed_domains = [
-        'www.papercut.com',
+        # 'www.papercut.com',
         'blog.papercut.com',
-        'portal.papercut.com',
+        # 'portal.papercut.com',
         # 'papercut.com',
     ]
     start_urls = [web_root]

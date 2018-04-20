@@ -2,17 +2,22 @@
     Extract all sentences from all paragraphs from all pages
 """
 from glob import glob
-from os.path import join, abspath, exists
+from os.path import join, abspath, exists, expanduser
 from collections import defaultdict
 from utils import summaries_dir, load_json, save_json, load_jsonl, save_jsonl
 
 
 threshold_words = 10
 root = 'c:/code/ToneRanger/paper_spider'
+root = '~/code/ToneRanger/paper_spider'
+root = expanduser(root)
+print('root=%s' % root)
+assert exists(root)
 
 
 def fix(s):
-    return s.replace('/', '\\').lower()
+    # return s.lower()
+    return s.replace('\\', '/').lower()
 
 
 def extract_sentences(max_processed=-1):
@@ -31,6 +36,7 @@ def extract_sentences(max_processed=-1):
     print('raw_url', len(raw_url))
     for i, k in enumerate(sorted(raw_url)[:5]):
         print('%d: %s %s' % (i, k, exists(k)))
+    # assert False
 
     path_url = {path: raw_url[raw] for path, raw in path_raw.items() if raw in raw_url}
 
@@ -44,6 +50,9 @@ def extract_sentences(max_processed=-1):
     sent_url = {}
     for path in files:
         path = fix(abspath(path))
+        # if not exists(path):
+        #     print('^^ %s does not exist' % path)
+        #     continue
         summary = load_json(path)
 
         for para in summary['text:paras']:
@@ -51,6 +60,8 @@ def extract_sentences(max_processed=-1):
             if len(para) < 30:
                 continue
             if para not in para_url:
+                if path not in path_url:
+                    continue
                 assert path in path_url, path
                 para_url[para] = path_url.get(path, "UNKNOWN")
         # for para2 in summary['text:sents']:
@@ -77,7 +88,7 @@ def extract_sentences(max_processed=-1):
     # "meta":{"source":"GitHub","url":"https://github.com/rdbc-io/rdbc/issues/86"}}
     # {"text":"Uber\u2019s Lesson: Silicon Valley\u2019s Start-Up Machine Needs Fixing","meta":{"source":"The New York Times"}}
 
-    save_jsonl('pc.paragraphs.jsonl', paras)
+    save_jsonl('blog.paragraphs.jsonl', paras)
     # save_jsonl('pc.sentences.jsonl', sents)
 
 
